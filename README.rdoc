@@ -1,0 +1,5 @@
+= puppet-secretserver module
+
+{<img src='https://codex.cegeka.be/jenkins/job/puppet-secretserver/badge/icon' />}[https://codex.cegeka.be/jenkins/job/puppet-secretserver/]
+
+This is the secretserver module.
