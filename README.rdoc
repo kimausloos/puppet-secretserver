@@ -9,12 +9,13 @@ A Puppet Module for working with Thycotic Secret Server.
 1. Install the following gems on your Puppet Master:
 	 * savon
 2. Install puppet-secretserver as a module in your Puppet master's module path
-3. Update the `ss_hostname`, `ss_username` and `ss_password` in the `secretserver.yaml` file
+3. Update the `ss_hostname`, `ss_username`, `ss_password`, `ss_ssl_ca_cert_file` and optionally `ss_folder_context` in the `secretserver.yaml` file
    with the correct credentials and copy the file to `/etc/puppet/`
 
 == Usage
 
-  $password = ss_get_password("search_text")
+  $password = ss_get_password("secret_name", "template_name")
+  $password = ss_get_password("secret_name", "template_name", "folder")
 
 == Current functionality
 

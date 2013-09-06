@@ -63,6 +63,8 @@ module Puppet::Util::Thycotic
       @client = Savon.client do |globals|
         globals.wsdl "https://#{host}/webservices/SSWebService.asmx?wsdl"
         globals.ssl_ca_cert_file ssl_ca_cert_file
+        globals.log false
+        globals.pretty_print_xml true
       end
 
       if ! defined? @client
@@ -87,25 +89,61 @@ module Puppet::Util::Thycotic
       return @resp
     end
 
-    def search_secrets(text)
-      response = request(:search_secrets, { token: @token, searchTerm: text })
-      @result = response[:search_secrets_response][:search_secrets_result]
+    def search_secrets(text, secret_type_name = nil, folder = nil)
+      valid_template = false
+      if !secret_type_name.nil?
+        templates = get_secret_templates
+        templates.each { |template_id, template_name|
+          if template_name == secret_type_name
+            valid_template = true
+          end
+        }
+      end
+      raise ArgumentError, "Invalid parameter: secret_type_name" unless valid_template
+
+      if folder.nil? or folder.empty?
+        response = request(:search_secrets, { token: @token, searchTerm: text })
+        @result = response[:search_secrets_response][:search_secrets_result]
+      else
+        #search_folders(folder)
+        #response = request(:search_secrets_by_folder, { token: @token, searchTerm: text, folderId: folder_id, includeSubFolders: true })
+        response = request(:search_secrets_by_folder, { token: @token, searchTerm: text, includeSubFolders: true })
+        @result = response[:search_secrets_by_folder_response][:search_secrets_by_folder_result]
+      end
 
       r = []
       if @result[:secret_summaries]
         if  @result[:secret_summaries][:secret_summary].is_a? Hash
           x = {}
           @result[:secret_summaries][:secret_summary].each {|y|
-            x[y[0]] = y[1]
+              x[y[0]] = y[1]
           }
           r << SearchResult.new(x)
         else
           @result[:secret_summaries][:secret_summary].each {|s|
-            r << SearchResult.new(s)
+            r << SearchResult.new(s) if s[:secret_name] ==  text and (secret_type_name.nil? or s[:secret_type_name] == secret_type_name)
           }
         end
       end
       return r
+    end
+
+    def search_folders(term)
+      response = request(:search_folders, { token: @token, Term: term })
+      #@result = response[:search_folders_response][:search_folders_result]
+      #@result[:folders]
+    end
+
+    def get_secret_templates
+      response = request(:get_secret_templates, { token: @token})
+      @result = response[:get_secret_templates_response][:get_secret_templates_result]
+      templates = {}
+      if @result[:secret_templates]
+        @result[:secret_templates][:secret_template].each { |template|
+          templates[template[:id]] = template[:name]
+        }
+      end
+      return templates
     end
 
     def get_secret(secret_id)
