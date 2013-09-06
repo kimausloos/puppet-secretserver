@@ -54,7 +54,7 @@ module Puppet::Util::Thycotic
 
     end
 
-    def initialize(host, user, password, organizationCode, domain)
+    def initialize(host, user, password, organizationCode, domain, ssl_ca_cert_file)
       @folders = {}
       @templates = {}
 
@@ -62,7 +62,7 @@ module Puppet::Util::Thycotic
 
       @client = Savon.client do |globals|
         globals.wsdl "https://#{host}/webservices/SSWebService.asmx?wsdl"
-        globals.ssl_ca_cert_file "/home/bkdem/test.pem"
+        globals.ssl_ca_cert_file ssl_ca_cert_file
       end
 
       if ! defined? @client
