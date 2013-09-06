@@ -2,4 +2,26 @@
 
 {<img src='https://codex.cegeka.be/jenkins/job/puppet-secretserver/badge/icon' />}[https://codex.cegeka.be/jenkins/job/puppet-secretserver/]
 
-This is the secretserver module.
+A Puppet Module for working with Thycotic Secret Server.
+
+== Installation
+
+1. Install the following gems on your Puppet Master:
+	 * savon
+2. Install puppet-secretserver as a module in your Puppet master's module path
+3. Update the `ss_hostname`, `ss_username` and `ss_password` in the `secretserver.yaml` file
+   with the correct credentials and copy the file to `/etc/puppet/`
+
+== Usage
+
+  $password = ss_get_password("search_text")
+
+== Current functionality
+
+* Retrieving a password
+
+== TODO
+
+* Search specific folders for passwords
+* Generating a password
+
