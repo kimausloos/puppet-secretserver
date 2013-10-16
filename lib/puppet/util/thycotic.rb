@@ -54,16 +54,15 @@ module Puppet::Util::Thycotic
 
     end
 
-    def initialize(host, user, password, organizationCode, domain, ssl_ca_cert_file)
+    def initialize(host, user, password, organizationCode, domain, ssl_ca_cert_file, logging_enabled)
       @folders = {}
       @templates = {}
-
-      (pw, rad) =  password.split(':')
 
       @client = Savon.client do |globals|
         globals.wsdl "https://#{host}/webservices/SSWebService.asmx?wsdl"
         globals.ssl_ca_cert_file ssl_ca_cert_file
-        globals.log false
+        globals.log logging_enabled
+        globals.filters [:password, :Token, :token]
         globals.pretty_print_xml true
       end
 
@@ -71,11 +70,13 @@ module Puppet::Util::Thycotic
         raise RuntimeError, "Failed to connect to #{host}"
       end
 
-      @token = authenticate({username: user, password: pw, domain: domain})
+      #@token = authenticate({username: user, password: password, domain: domain})
+      @token = authenticate({:username => user, :password => password, :domain => domain})
     end
 
     def authenticate(message)
-      @resp = @client.call(:authenticate, message: message)
+      #@resp = @client.call(:authenticate, message: message)
+      @resp = @client.call(:authenticate, :message => message)
       return nil unless @resp
       @resp = @resp.to_hash
       @result = @resp[:authenticate_response][:authenticate_result][:token]
@@ -83,7 +84,8 @@ module Puppet::Util::Thycotic
     end
 
     def request( ws, message)
-      @resp = @client.call(ws, message: message)
+      #@resp = @client.call(ws, message: message)
+      @resp = @client.call(ws, :message => message)
       return nil unless @resp;
       @resp = @resp.to_hash
       return @resp
@@ -98,44 +100,79 @@ module Puppet::Util::Thycotic
             valid_template = true
           end
         }
-      end
-      raise ArgumentError, "Invalid parameter: secret_type_name" unless valid_template
-
-      if folder.nil? or folder.empty?
-        response = request(:search_secrets, { token: @token, searchTerm: text })
-        @result = response[:search_secrets_response][:search_secrets_result]
-      else
-        #search_folders(folder)
-        #response = request(:search_secrets_by_folder, { token: @token, searchTerm: text, folderId: folder_id, includeSubFolders: true })
-        response = request(:search_secrets_by_folder, { token: @token, searchTerm: text, includeSubFolders: true })
-        @result = response[:search_secrets_by_folder_response][:search_secrets_by_folder_result]
+        raise ArgumentError, "Invalid input parameter: secret_type_name" unless valid_template
       end
 
       r = []
-      if @result[:secret_summaries]
-        if  @result[:secret_summaries][:secret_summary].is_a? Hash
-          x = {}
-          @result[:secret_summaries][:secret_summary].each {|y|
-              x[y[0]] = y[1]
-          }
-          r << SearchResult.new(x)
-        else
-          @result[:secret_summaries][:secret_summary].each {|s|
-            r << SearchResult.new(s) if s[:secret_name] ==  text and (secret_type_name.nil? or s[:secret_type_name] == secret_type_name)
-          }
+      if folder.nil? or folder.empty?
+        #response = request(:search_secrets, { token: @token, searchTerm: text })
+        response = request(:search_secrets, { :token => @token, :searchTerm => text })
+        @result = response[:search_secrets_response][:search_secrets_result]
+
+        if @result[:secret_summaries]
+          if  @result[:secret_summaries][:secret_summary].is_a? Hash
+            r << SearchResult.new(@result[:secret_summaries][:secret_summary])
+          else
+            @result[:secret_summaries][:secret_summary].each {|s|
+              r << SearchResult.new(s) if s[:secret_name] ==  text and (secret_type_name.nil? or s[:secret_type_name] == secret_type_name)
+            }
+          end
         end
+      else
+        folder_ids = search_folders(folder)
+        folder_ids.each { |folder_id|
+          #response = request(:search_secrets_by_folder, { token: @token, searchTerm: text, folderId: folder_id, includeSubFolders: true })
+          response = request(:search_secrets_by_folder, { :token => @token, :searchTerm => text, :folderId => folder_id, :includeSubFolders => true })
+          @result = response[:search_secrets_by_folder_response][:search_secrets_by_folder_result]
+
+          if @result[:secret_summaries]
+            if  @result[:secret_summaries][:secret_summary].is_a? Hash
+              r << SearchResult.new(@result[:secret_summaries][:secret_summary])
+            else
+              @result[:secret_summaries][:secret_summary].each { |s|
+                r << SearchResult.new(s) if s[:secret_name] == text and (secret_type_name.nil? or s[:secret_type_name] == secret_type_name)
+              }
+            end
+          end
+        }
       end
+
+      raise ArgumentError, "No secrets found" if r.length == 0
+      raise ArgumentError, "Too many secrets found" if r.length > 1
+
       return r
     end
 
     def search_folders(term)
-      response = request(:search_folders, { token: @token, Term: term })
-      #@result = response[:search_folders_response][:search_folders_result]
-      #@result[:folders]
+      #response = request(:search_folders, { token: @token, folderName: term })
+      response = request(:search_folders, { :token => @token, :folderName => term })
+      @result = response[:search_folders_response][:search_folders_result][:folders]
+      raise ArgumentError, "No folder found that matches the given search criteria" if @result.nil?
+
+      folder_ids = []
+      if @result[:folder].is_a? Hash
+        folder_ids << @result[:folder][:id]
+      else
+        @result[:folder].each { |folder|
+          folder_ids << folder[:id]
+        }
+      end
+      return folder_ids
+    end
+
+    def get_secret(secret_id)
+      if secret_id.class == SecretServer::SearchResult
+        secret_id = secret_id.secret_id
+      end
+      #response = request(:get_secret, { token: @token, secret_id: secret_id })
+      response = request(:get_secret, { :token => @token, :secret_id => secret_id })
+      @result = response[:get_secret_response][:get_secret_result]
+      Secret.new(@result[:secret])
     end
 
     def get_secret_templates
-      response = request(:get_secret_templates, { token: @token})
+      #response = request(:get_secret_templates, { token: @token})
+      response = request(:get_secret_templates, { :token => @token})
       @result = response[:get_secret_templates_response][:get_secret_templates_result]
       templates = {}
       if @result[:secret_templates]
@@ -145,15 +182,5 @@ module Puppet::Util::Thycotic
       end
       return templates
     end
-
-    def get_secret(secret_id)
-      if secret_id.class == SecretServer::SearchResult
-        secret_id = secret_id.secret_id
-      end
-      response = request(:get_secret, { token: @token, secret_id: secret_id })
-      @result = response[:get_secret_response][:get_secret_result]
-      Secret.new(@result[:secret])
-    end
-
   end
 end
