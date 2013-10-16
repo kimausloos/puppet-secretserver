@@ -9,19 +9,26 @@ A Puppet Module for working with Thycotic Secret Server.
 1. Install the following gems on your Puppet Master:
 	 * savon
 2. Install puppet-secretserver as a module in your Puppet master's module path
-3. Update the `ss_hostname`, `ss_username` and `ss_password` in the `secretserver.yaml` file
+3. Update the `ss_hostname`, `ss_username`, `ss_password`, `ss_ssl_ca_cert_file` and `logging_enabled` in the `secretserver.yaml` file
    with the correct credentials and copy the file to `/etc/puppet/`
 
 == Usage
 
-  $password = ss_get_password("search_text")
+  $password = ss_get_password("secret_name")
+  $password = ss_get_password("secret_name", "secret_template_name")
+  $password = ss_get_password("secret_name", "secret_template_name", "folder")
 
 == Current functionality
 
-* Retrieving a password
+* Retrieving a password based on a search string
+* Retrieving a password based on a search string and secret template
+* Retrieving a password based on a search string and secret template and folder name
+
+If the folder provided doesn't exist, a Puppet Error will be thrown.
+If multiple secrets are found for the given search criteria, a Puppet Error will be thrown.
 
 == TODO
 
-* Search specific folders for passwords
+* Ability to also return the hashed password
 * Generating a password
 
