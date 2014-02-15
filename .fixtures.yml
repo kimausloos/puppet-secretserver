@@ -1,0 +1,3 @@
+fixtures:
+  symlinks:
+    "secretserver": "#{source_dir}"
