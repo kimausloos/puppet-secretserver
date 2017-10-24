@@ -59,7 +59,7 @@ module Puppet::Util::Thycotic
       @templates = {}
 
       @client = Savon.client do |globals|
-        globals.wsdl "https://#{host}/webservices/SSWebService.asmx?wsdl"
+        globals.wsdl "https://#{host}/SecretServer/webservices/SSWebService.asmx?wsdl"
         globals.ssl_ca_cert_file ssl_ca_cert_file
         globals.log logging_enabled
         globals.filters [:password, :Token, :token]
