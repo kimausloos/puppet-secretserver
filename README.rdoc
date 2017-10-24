@@ -1,6 +1,6 @@
 = puppet-secretserver module
 
-{<img src='https://codex.cegeka.be/jenkins/job/puppet-secretserver/badge/icon' />}[https://codex.cegeka.be/jenkins/job/puppet-secretserver/]
+{<img src='https://jenkins-iac.cegeka.be/job/puppet-secretserver/badge/icon' />}[https://jenkins-iac.cegeka.be/job/puppet-secretserver/]
 
 A Puppet Module for working with Thycotic Secret Server.
 
